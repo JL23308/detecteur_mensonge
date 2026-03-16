@@ -1,0 +1,92 @@
+<div class="min-h-screen bg-gray-100 text-gray-800 font-sans">
+  
+  <div *ngIf="!token" class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-96">
+      <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Polygraph Portal</h2>
+      <div class="mb-4">
+        <label class="block text-sm font-semibold mb-2">Username</label>
+        <input [(ngModel)]="username" type="text" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div class="mb-6">
+        <label class="block text-sm font-semibold mb-2">Password</label>
+        <input [(ngModel)]="password" type="password" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <button (click)="login()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
+        Login
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="token" class="p-8">
+    
+    <div class="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow">
+      <h1 class="text-3xl font-extrabold text-gray-800">📡 Live Dashboard</h1>
+      <button (click)="logout()" class="text-red-500 hover:text-red-700 font-semibold">Logout</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-xl font-bold mb-4 border-b pb-2">1. Select Device</h2>
+        <div *ngIf="devices.length === 0" class="text-gray-500 italic">No devices found.</div>
+        <select *ngIf="devices.length > 0" [(ngModel)]="selectedDeviceId" class="w-full border p-2 rounded mb-4">
+          <option *ngFor="let d of devices" [value]="d.id">{{ d.name }} ({{ d.mac_address }})</option>
+        </select>
+        
+        <h2 class="text-xl font-bold mb-4 border-b pb-2 mt-6">2. Session Control</h2>
+        <button [disabled]="!selectedDeviceId" (click)="startSession()" 
+                class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 font-bold transition w-full shadow disabled:opacity-50">
+          Start Live Monitoring
+        </button>
+        <p class="text-xs text-gray-500 mt-2">Starting a session will begin polling the backend for measures corresponding to this session.</p>
+      </div>
+
+      <!-- Real-Time Status -->
+      <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-center items-center h-64 transition-colors duration-500"
+           [ngClass]="{'bg-red-500 text-white': isLieAlert, 'bg-green-500 text-white': !isLieAlert && measures.length > 0}">
+        
+        <div *ngIf="measures.length === 0" class="text-gray-400 font-semibold text-lg">
+          Waiting for data...
+        </div>
+        
+        <div *ngIf="measures.length > 0" class="text-center">
+          <div class="text-8xl font-black">{{ measures[measures.length - 1].bpm }}</div>
+          <div class="text-xl mt-2 font-bold uppercase tracking-widest">BPM</div>
+          
+          <div class="mt-4 text-3xl font-extrabold pb-2" *ngIf="!isLieAlert">✅ TRUTH</div>
+          <div class="mt-4 text-3xl font-extrabold pb-2 animate-pulse" *ngIf="isLieAlert">🚨 LIE DETECTED</div>
+        </div>
+        
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow">
+      <h2 class="text-xl font-bold mb-4 border-b pb-2">Session History (Latest first)</h2>
+      <div *ngIf="measures.length === 0" class="text-gray-500 italic">No history for current session.</div>
+      
+      <div class="overflow-x-auto" *ngIf="measures.length > 0">
+        <table class="min-w-full bg-white">
+          <thead class="bg-gray-800 text-white">
+            <tr>
+              <th class="py-2 px-4 text-left">Time</th>
+              <th class="py-2 px-4 text-left">BPM</th>
+              <th class="py-2 px-4 text-left">Base BPM</th>
+              <th class="py-2 px-4 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody class="text-gray-700">
+            <tr *ngFor="let m of measures.slice().reverse()" class="border-b" [ngClass]="{'bg-red-50': m.is_lie}">
+              <td class="py-2 px-4">{{ m.timestamp | date:'mediumTime' }}</td>
+              <td class="py-2 px-4 font-bold">{{ m.bpm }}</td>
+              <td class="py-2 px-4">{{ m.base_bpm }}</td>
+              <td class="py-2 px-4 font-bold">
+                <span *ngIf="m.is_lie" class="text-red-600">LIE</span>
+                <span *ngIf="!m.is_lie" class="text-green-600">TRUTH</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
