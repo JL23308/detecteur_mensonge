@@ -1,34 +1,47 @@
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 from api.models import Device, Session, Measure
 from api.serializers import MeasureSerializer
 from django.shortcuts import get_object_or_404
 
 class MeasureCreateView(APIView):
     """
-    Endpoint specifically meant for the IoT Device (M5StickC) to POST live measures.
-    We AllowAny since IoT devices lack proper JWT/Token auth mechanisms easily.
+    Endpoint for the IoT device (ESP32) to POST live measures.
+    Uses Token auth — the same token defined in the Arduino sketch.
+    Auto-creates the Device record on first contact so the dashboard
+    shows it without any manual registration step.
     """
-    permission_classes = [AllowAny] 
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = MeasureSerializer(data=request.data)
         if serializer.is_valid():
             mac = request.data.get('device_mac')
-            try:
-                device = Device.objects.get(mac_address=mac)
-                # Link to the device's currently active session if one exists
-                active_session = Session.objects.filter(device=device, is_active=True).first()
-                if active_session:
-                    serializer.save(session=active_session)
-                else:
-                    serializer.save()
-            except Device.DoesNotExist:
-                # Still save the log even if device isn't registered on a user account yet
+
+            # Auto-create device for this user if it doesn't exist yet
+            device, created = Device.objects.get_or_create(
+                mac_address=mac,
+                defaults={
+                    'user': request.user,
+                    'name': 'HUZZAH32 Detector',
+                }
+            )
+
+            # Link to the device's most recently created active session
+            active_session = Session.objects.filter(device=device, is_active=True).order_by('-id').first()
+            if active_session:
+                serializer.save(session=active_session)
+            else:
                 serializer.save()
+
+            if created:
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SessionMeasuresView(generics.ListAPIView):

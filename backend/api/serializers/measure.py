@@ -4,8 +4,10 @@ from api.models import Measure
 class MeasureSerializer(serializers.ModelSerializer):
     """
     Serializer for heart rate and lie detection points.
+    The ESP32 only needs to send: device_mac, bpm, base_bpm, is_lie.
+    session and timestamp are set server-side.
     """
     class Meta:
         model = Measure
-        fields = '__all__'
-        read_only_fields = ('timestamp',)
+        fields = ['id', 'session', 'device_mac', 'bpm', 'base_bpm', 'is_lie', 'timestamp']
+        read_only_fields = ('id', 'session', 'timestamp')

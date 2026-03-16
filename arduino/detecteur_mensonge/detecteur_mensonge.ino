@@ -4,7 +4,9 @@
 
 #define SSID "Jl"
 #define PASSWORD "turalBG789"
-#define API_URL "http://172.20.10.8:8000/api/measures/"
+#define API_URL "http://172.20.10.9:8000/api/measures/"
+// Token Django du compte Arduino (récupéré depuis /api/users/login/ ou l'admin)
+#define DEVICE_TOKEN "f03e4d7e2d4592d39bdc5501a78d421cb01a8388"
 
 // Configuration matérielle pour le Adafruit HUZZAH32 ESP32 Feather
 const int heartPin = 15;      // Pin où est connecté le Grove Ear Clip
@@ -125,8 +127,8 @@ void loop() {
     } 
     // --- PHASE OPERATIONNELLE ---
     else if (isCalibrated) {
-        // Envoi et analyse toutes les 2 secondes s'il y a un pouls
-        if (currentBPM > 40 && millis() - tsLastReport > 2000) { 
+        // Envoi et analyse toutes les 500ms s'il y a un pouls
+        if (currentBPM > 40 && millis() - tsLastReport > 500) { 
             bool isLie = false;
             
             // Si le rythme dépasse de 20% la base
@@ -152,6 +154,7 @@ void sendData(float bpm, bool isLie) {
     HTTPClient http;
     http.begin(API_URL);
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("Authorization", "Token " DEVICE_TOKEN);
 
     StaticJsonDocument<200> doc;
     // L'adresse MAC sert d'identifiant unique pour l'appareil sur Django

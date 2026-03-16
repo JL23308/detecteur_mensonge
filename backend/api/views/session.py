@@ -18,7 +18,21 @@ class SessionViewSet(viewsets.ModelViewSet):
         return Session.objects.filter(user=self.request.user).order_by('-start_time')
 
     def perform_create(self, serializer):
+        from django.utils import timezone
+        from api.models import Device, Session as SessionModel
+
+        # Retrieve the device from the validated data
+        device = serializer.validated_data.get('device')
+
+        # Close any existing active sessions for this device before starting a new one
+        if device:
+            SessionModel.objects.filter(device=device, is_active=True).update(
+                is_active=False,
+                end_time=timezone.now()
+            )
+
         serializer.save(user=self.request.user)
+
         
     @action(detail=True, methods=['post'])
     def end_session(self, request, pk=None):
@@ -29,7 +43,7 @@ class SessionViewSet(viewsets.ModelViewSet):
         if not session.is_active:
             return Response({'status': 'Session already ended'}, status=400)
             
-        session.is_active = false
+        session.is_active = False
         session.end_time = timezone.now()
         session.save()
         return Response({'status': 'Session ended successfully'})
