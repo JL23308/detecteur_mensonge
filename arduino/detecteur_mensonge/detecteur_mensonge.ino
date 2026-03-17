@@ -127,20 +127,12 @@ void loop() {
     } 
     // --- PHASE OPERATIONNELLE ---
     else if (isCalibrated) {
-        // Envoi et analyse toutes les 500ms s'il y a un pouls
+        // Envoi toutes les 500ms s'il y a un pouls
         if (currentBPM > 40 && millis() - tsLastReport > 500) { 
-            bool isLie = false;
-            
-            // Si le rythme dépasse de 20% la base
-            if (currentBPM > baseBPM * 1.20) {
-                isLie = true;
-                Serial.printf("[ALERTE] MENSONGE DETECTE ! (BPM: %.1f, Base: %.1f)\n", currentBPM, baseBPM);
-            } else {
-                Serial.printf("[INFO] Verite absolue. (BPM: %.1f, Base: %.1f)\n", currentBPM, baseBPM);
-            }
+            Serial.printf("[INFO] Pulsation detectee. (BPM: %.1f, Base: %.1f)\n", currentBPM, baseBPM);
 
             if (WiFi.status() == WL_CONNECTED) {
-                sendData(currentBPM, isLie);
+                sendData(currentBPM);
             } else {
                 Serial.println("  (Non envoye, WiFi deconnecte)");
             }
@@ -150,7 +142,7 @@ void loop() {
     }
 }
 
-void sendData(float bpm, bool isLie) {
+void sendData(float bpm) {
     HTTPClient http;
     http.begin(API_URL);
     http.addHeader("Content-Type", "application/json");
@@ -161,7 +153,7 @@ void sendData(float bpm, bool isLie) {
     doc["device_mac"] = WiFi.macAddress();
     doc["bpm"] = bpm;
     doc["base_bpm"] = baseBPM;
-    doc["is_lie"] = isLie;
+    // Note: is_lie est dorenavant calcule cote API
 
     String requestBody;
     serializeJson(doc, requestBody);

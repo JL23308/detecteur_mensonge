@@ -19,6 +19,12 @@ class Measure(models.Model):
         verbose_name = "Measure"
         verbose_name_plural = "Measures"
 
+    def save(self, *args, **kwargs):
+        # Business logic: a lie is detected if BPM > 20% of baseline
+        if self.bpm and self.base_bpm:
+            self.is_lie = self.bpm > (self.base_bpm * 1.20)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         status_text = "LIE DETECTED" if self.is_lie else "TRUTH"
         return f"Measure [{status_text}]: {self.bpm} BPM at {self.timestamp.strftime('%H:%M:%S')}"
