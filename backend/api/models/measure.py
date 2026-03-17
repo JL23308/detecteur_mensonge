@@ -12,6 +12,7 @@ class Measure(models.Model):
     base_bpm = models.FloatField(help_text="Baseline resting BPM used for calculation")
     is_lie = models.BooleanField(default=False, help_text="True if current BPM exceeds baseline by the threshold (e.g., > 20%)")
     shake_intensity = models.FloatField(default=0.0, help_text="Vibration intensity measured by accelerometer")
+    is_tremor_alert = models.BooleanField(default=False, help_text="True if vibrations exceed a threshold (e.g., > 0.5)")
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -24,6 +25,11 @@ class Measure(models.Model):
         # Business logic: a lie is detected if BPM > 20% of baseline
         if self.bpm and self.base_bpm:
             self.is_lie = self.bpm > (self.base_bpm * 1.20)
+        
+        # Tremor logic: alert if shake_intensity > 0.5
+        if self.shake_intensity:
+            self.is_tremor_alert = self.shake_intensity > 0.5
+            
         super().save(*args, **kwargs)
 
     def __str__(self):

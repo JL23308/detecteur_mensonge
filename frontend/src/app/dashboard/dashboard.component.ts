@@ -9,6 +9,10 @@ const ROLLING_WINDOW = 5;       // Nombre de mesures pour la moyenne glissante (
 const LIE_DELTA_RATIO = 0.18;  // +18% au-dessus de la moyenne glissante = mensonge
 const MAX_CHART_POINTS = 60;    // Augmenté pour garder 30s de données à 500ms
 
+// --- Configuration Tremblements ---
+const TREMOR_WINDOW = 5;
+const TREMOR_RATIO = 0.30;       // +30% au-dessus de la moyenne = alerte
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
@@ -37,6 +41,9 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   pollingInterval: any;
   chart: Chart | null = null;
+  tremorChart: Chart | null = null;
+  isTremorAlert: boolean = false;
+  tremorRollingAvg: number = 0;
 
   constructor(private api: ApiService) {}
 
@@ -180,6 +187,54 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
           }
         }
       });
+
+      // --- Tremor Chart Initialization ---
+      const tremorCanvas = document.getElementById('tremorChart') as HTMLCanvasElement;
+      if (!tremorCanvas) return;
+      if (this.tremorChart) this.tremorChart.destroy();
+
+      this.tremorChart = new Chart(tremorCanvas, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Vibrations',
+              data: [],
+              borderColor: '#818cf8',
+              backgroundColor: 'rgba(129, 140, 248, 0.08)',
+              borderWidth: 2,
+              tension: 0.4,
+              pointRadius: 3,
+              fill: true,
+              pointBackgroundColor: [],
+            },
+            {
+              label: 'Seuil Alerte',
+              data: [],
+              borderColor: '#f87171',
+              borderWidth: 1.5,
+              borderDash: [4, 4],
+              tension: 0.4,
+              pointRadius: 0,
+              fill: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { display: false }, grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#94a3b8', font: { size: 10 } },
+              grid: { color: 'rgba(148,163,184,0.1)' }
+            }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
     }, 100);
   }
 
@@ -233,6 +288,18 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     this.delta = this.currentBpm - this.rollingAvg;
     this.deltaPercent = this.rollingAvg > 0 ? (this.delta / this.rollingAvg) * 100 : 0;
     this.isLieAlert = this.deltaPercent > LIE_DELTA_RATIO * 100;
+
+    // Tremor Alert Logic
+    const tremorWindow = sorted.slice(
+      Math.max(0, sorted.length - 1 - TREMOR_WINDOW),
+      sorted.length - 1
+    );
+    if (tremorWindow.length === 0) {
+      this.tremorRollingAvg = this.currentShake;
+    } else {
+      this.tremorRollingAvg = tremorWindow.reduce((s, m) => s + (m.shake_intensity || 0), 0) / tremorWindow.length;
+    }
+    this.isTremorAlert = this.currentShake > (this.tremorRollingAvg * (1 + TREMOR_RATIO)) && this.currentShake > 0.2;
   }
 
   updateChart(sorted: any[]) {
@@ -269,6 +336,22 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     this.chart.data.datasets[1].data = avgData;
     this.chart.data.datasets[2].data = thresholdData;
     this.chart.update('none');
+
+    // Update Tremor Chart
+    if (!this.tremorChart) return;
+    const shakeData = visible.map(m => m.shake_intensity || 0);
+    const tremorThresholdData = visible.map((_, i) => {
+        const allUpToI = sorted.slice(0, sorted.length - visible.length + i + 1);
+        const win = allUpToI.slice(Math.max(0, allUpToI.length - 1 - TREMOR_WINDOW), allUpToI.length - 1);
+        const avg = win.length === 0 ? shakeData[0] : win.reduce((s, m) => s + (m.shake_intensity || 0), 0) / win.length;
+        return avg * (1 + TREMOR_RATIO);
+    });
+
+    this.tremorChart.data.labels = labels;
+    this.tremorChart.data.datasets[0].data = shakeData;
+    this.tremorChart.data.datasets[1].data = tremorThresholdData;
+    (this.tremorChart.data.datasets[0] as any).pointBackgroundColor = shakeData.map((s, i) => s > tremorThresholdData[i] ? '#ef4444' : '#818cf8');
+    this.tremorChart.update('none');
   }
 
   get lieThreshold(): number {
