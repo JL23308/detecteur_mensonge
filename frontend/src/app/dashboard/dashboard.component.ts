@@ -33,6 +33,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   currentBpm: number = 0;
   delta: number = 0;           // BPM - rollingAvg
   deltaPercent: number = 0;    // % d'écart par rapport à la moyenne
+  currentShake: number = 0;    // Tremblement actuel (M5StickC)
 
   pollingInterval: any;
   chart: Chart | null = null;
@@ -215,6 +216,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
     const latest = sorted[sorted.length - 1];
     this.currentBpm = latest.bpm;
+    this.currentShake = latest.shake_intensity || 0;
 
     // Fenêtre glissante : exclut le point courant pour ne pas biaiser
     const windowData = sorted.slice(

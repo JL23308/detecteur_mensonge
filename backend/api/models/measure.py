@@ -11,6 +11,7 @@ class Measure(models.Model):
     bpm = models.FloatField(help_text="Current Beats Per Minute recorded by the device")
     base_bpm = models.FloatField(help_text="Baseline resting BPM used for calculation")
     is_lie = models.BooleanField(default=False, help_text="True if current BPM exceeds baseline by the threshold (e.g., > 20%)")
+    shake_intensity = models.FloatField(default=0.0, help_text="Vibration intensity measured by accelerometer")
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:

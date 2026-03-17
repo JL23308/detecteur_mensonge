@@ -9,5 +9,5 @@ class MeasureSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Measure
-        fields = ['id', 'session', 'device_mac', 'bpm', 'base_bpm', 'is_lie', 'timestamp']
+        fields = ['id', 'session', 'device_mac', 'bpm', 'base_bpm', 'is_lie', 'shake_intensity', 'timestamp']
         read_only_fields = ('id', 'session', 'is_lie', 'timestamp')

@@ -77,6 +77,26 @@
           </div>
         </div>
       </div>
+
+      <!-- Live Tremor indicator (M5StickC) -->
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col justify-center items-center">
+        <div *ngIf="measures.length === 0" class="text-slate-500 text-sm">En attente...</div>
+        <div *ngIf="measures.length > 0" class="text-center w-full">
+          <div class="text-4xl font-black text-indigo-300">
+            {{ currentShake | number:'1.2-2' }}
+          </div>
+          <div class="text-xs uppercase tracking-widest text-slate-400 mt-1">Vibrations (Hand)</div>
+          
+          <!-- Visual bar -->
+          <div class="w-full bg-slate-700 rounded-full h-2 mt-4 overflow-hidden">
+            <div class="h-full transition-all duration-300"
+                 [ngClass]="currentShake > 0.5 ? 'bg-red-500' : 'bg-indigo-500'"
+                 [style.width.%]="(currentShake * 100) > 100 ? 100 : (currentShake * 100)">
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-2 italic">Capteur M5StickC Accel</p>
+        </div>
+      </div>
     </div>
 
     <!-- Stats row -->

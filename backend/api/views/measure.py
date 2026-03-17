@@ -18,30 +18,35 @@ class MeasureCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        print(f"\n[DEBUG] Incoming request from {request.META.get('REMOTE_ADDR')}")
+        print(f"[DEBUG] Data: {request.data}")
+        
         serializer = MeasureSerializer(data=request.data)
         if serializer.is_valid():
             mac = request.data.get('device_mac')
+            print(f"[DEBUG] Valid data. MAC: {mac}")
 
             # Auto-create device for this user if it doesn't exist yet
             device, created = Device.objects.get_or_create(
                 mac_address=mac,
                 defaults={
                     'user': request.user,
-                    'name': 'HUZZAH32 Detector',
+                    'name': 'M5StickC Plus Unified',
                 }
             )
 
-            # Link to the device's most recently created active session
-            active_session = Session.objects.filter(device=device, is_active=True).order_by('-id').first()
+            # Link to the user's most recently created active session (allows multi-device sync)
+            active_session = Session.objects.filter(user=request.user, is_active=True).order_by('-id').first()
             if active_session:
+                print(f"[DEBUG] Linked to Session ID: {active_session.id}")
                 serializer.save(session=active_session)
             else:
+                print("[DEBUG] No active session found for user. Saving measure without session.")
                 serializer.save()
 
-            if created:
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        print(f"[DEBUG] Serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SessionMeasuresView(generics.ListAPIView):
