@@ -181,7 +181,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
             },
             tooltip: {
               callbacks: {
-                label: (ctx) => ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(1)} BPM`
+                label: (ctx: any) => ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(1)} BPM`
               }
             }
           }
@@ -282,7 +282,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     if (windowData.length === 0) {
       this.rollingAvg = this.currentBpm;
     } else {
-      this.rollingAvg = windowData.reduce((s, m) => s + m.bpm, 0) / windowData.length;
+      this.rollingAvg = windowData.reduce((s: number, m: any) => s + m.bpm, 0) / windowData.length;
     }
 
     this.delta = this.currentBpm - this.rollingAvg;
@@ -297,7 +297,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     if (tremorWindow.length === 0) {
       this.tremorRollingAvg = this.currentShake;
     } else {
-      this.tremorRollingAvg = tremorWindow.reduce((s, m) => s + (m.shake_intensity || 0), 0) / tremorWindow.length;
+      this.tremorRollingAvg = tremorWindow.reduce((s: number, m: any) => s + (m.shake_intensity || 0), 0) / tremorWindow.length;
     }
     this.isTremorAlert = this.currentShake > (this.tremorRollingAvg * (1 + TREMOR_RATIO)) && this.currentShake > 0.2;
   }
@@ -308,25 +308,25 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     // Limit displayed points
     const visible = sorted.slice(-MAX_CHART_POINTS);
 
-    const labels = visible.map(m => {
+    const labels = visible.map((m: any) => {
       const d = new Date(m.timestamp);
       return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
     });
 
-    const bpmData = visible.map(m => m.bpm);
+    const bpmData = visible.map((m: any) => m.bpm);
 
     // Compute rolling average for each visible point
-    const avgData = visible.map((_, i) => {
+    const avgData = visible.map((_: any, i: number) => {
       const allUpToI = sorted.slice(0, sorted.length - visible.length + i + 1);
       const win = allUpToI.slice(Math.max(0, allUpToI.length - 1 - ROLLING_WINDOW), allUpToI.length - 1);
       if (win.length === 0) return bpmData[0];
-      return win.reduce((s, m) => s + m.bpm, 0) / win.length;
+      return win.reduce((s: number, m: any) => s + m.bpm, 0) / win.length;
     });
 
-    const thresholdData = avgData.map(avg => avg * (1 + LIE_DELTA_RATIO));
+    const thresholdData = avgData.map((avg: number) => avg * (1 + LIE_DELTA_RATIO));
 
     // Color each BPM point: red if above threshold, indigo otherwise
-    const pointColors = bpmData.map((bpm, i) =>
+    const pointColors = bpmData.map((bpm: number, i: number) =>
       bpm > thresholdData[i] ? '#ef4444' : '#6366f1'
     );
 
@@ -339,18 +339,18 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Update Tremor Chart
     if (!this.tremorChart) return;
-    const shakeData = visible.map(m => m.shake_intensity || 0);
-    const tremorThresholdData = visible.map((_, i) => {
+    const shakeData = visible.map((m: any) => m.shake_intensity || 0);
+    const tremorThresholdData = visible.map((_: any, i: number) => {
         const allUpToI = sorted.slice(0, sorted.length - visible.length + i + 1);
         const win = allUpToI.slice(Math.max(0, allUpToI.length - 1 - TREMOR_WINDOW), allUpToI.length - 1);
-        const avg = win.length === 0 ? shakeData[0] : win.reduce((s, m) => s + (m.shake_intensity || 0), 0) / win.length;
+        const avg = win.length === 0 ? shakeData[0] : win.reduce((s: number, m: any) => s + (m.shake_intensity || 0), 0) / win.length;
         return avg * (1 + TREMOR_RATIO);
     });
 
     this.tremorChart.data.labels = labels;
     this.tremorChart.data.datasets[0].data = shakeData;
     this.tremorChart.data.datasets[1].data = tremorThresholdData;
-    (this.tremorChart.data.datasets[0] as any).pointBackgroundColor = shakeData.map((s, i) => s > tremorThresholdData[i] ? '#ef4444' : '#818cf8');
+    (this.tremorChart.data.datasets[0] as any).pointBackgroundColor = shakeData.map((s: number, i: number) => s > tremorThresholdData[i] ? '#ef4444' : '#818cf8');
     this.tremorChart.update('none');
   }
 
@@ -367,7 +367,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       chronoIndex
     );
     if (win.length === 0) return this.measures[chronoIndex]?.bpm ?? 0;
-    return win.reduce((s, m) => s + m.bpm, 0) / win.length;
+    return win.reduce((s: number, m: any) => s + m.bpm, 0) / win.length;
   }
 
   computeDeltaPercent(reversedIndex: number): number {

@@ -22,13 +22,23 @@ class Measure(models.Model):
         verbose_name_plural = "Measures"
 
     def save(self, *args, **kwargs):
-        # Business logic: a lie is detected if BPM > 20% of baseline
+        # Realistic Lie Detection Logic
+        lie_score = 0
         if self.bpm and self.base_bpm:
-            self.is_lie = self.bpm > (self.base_bpm * 1.20)
-        
-        # Tremor logic: alert if shake_intensity > 0.5
+            bpm_ratio = self.bpm / self.base_bpm
+            if bpm_ratio > 1.10:
+                # Add 1 point for every 1% above 110%
+                lie_score += (bpm_ratio - 1.10) * 100
+                
         if self.shake_intensity:
+            if self.shake_intensity > 0.2:
+                # Add points based on tremor intensity (e.g. 0.5 tremor -> 15 points)
+                lie_score += self.shake_intensity * 30
             self.is_tremor_alert = self.shake_intensity > 0.5
+            
+        # Considered a lie if the combined score exceeds 15
+        # This indicates either a large BPM spike, large tremors, or a combination of both
+        self.is_lie = lie_score > 15
             
         super().save(*args, **kwargs)
 

@@ -34,6 +34,11 @@ class MeasureCreateView(APIView):
                     'name': 'M5StickC Plus Unified',
                 }
             )
+            
+            # If the device previously belonged to another user, transfer ownership dynamically
+            if device.user != request.user:
+                device.user = request.user
+                device.save()
 
             # Link to the user's most recently created active session (allows multi-device sync)
             active_session = Session.objects.filter(user=request.user, is_active=True).order_by('-id').first()

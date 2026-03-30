@@ -6,8 +6,8 @@
 // --- CONFIGURATION ---
 #define SSID "Jl"
 #define PASSWORD "turalBG789"
-#define API_URL "http://172.20.10.9:8000/api/measures/"
-#define DEVICE_TOKEN "f03e4d7e2d4592d39bdc5501a78d421cb01a8388"
+#define API_URL "http://172.20.10.8:8000/api/measures/"
+#define DEVICE_TOKEN "4f8ac44667fa31f8138443833ee250ae48e76090"
 
 // Pin Hardware pour le Grove Ear Clip sur M5StickC Plus 1.1
 // Port Grove : Yellow=G32, White=G33
@@ -52,6 +52,7 @@ void setup() {
 
     auto cfg = M5.config();
     M5.begin(cfg);
+    M5.Speaker.setVolume(255);
     
     M5.Display.setRotation(3);
     M5.Display.fillScreen(BLACK);
@@ -125,7 +126,7 @@ void loop() {
     // --- LOGIQUE TREMBLEMENTS (IMU) ---
     float ax, ay, az;
     M5.Imu.getAccel(&ax, &ay, &az);
-    float delta = abs(ax - prevAccX) + abs(ay - prevAccY) + abs(az - prevAccZ);
+    float delta = fabs(ax - prevAccX) + fabs(ay - prevAccY) + fabs(az - prevAccZ);
     shakeIntensity = (shakeIntensity * 0.8) + (delta * 0.2); 
     prevAccX = ax; prevAccY = ay; prevAccZ = az;
 
@@ -175,13 +176,22 @@ void loop() {
             int barW = map(shakeIntensity * 100, 0, 100, 0, M5.Display.width());
             M5.Display.fillRect(0, 100, barW, 20, shakeIntensity > 0.5 ? RED : GREEN);
             
-            if (totalBeats > 0 && millis() % 1000 < 50) {
-                Serial.printf("[DEBUG] Battements detectes total : %d\n", totalBeats);
+            static unsigned long tsLastLog = 0;
+            if (millis() - tsLastLog >= 1000) {
+                Serial.printf("[LIVE] BPM: %.1f | Tremblements: %.3f | Battements: %d\n", currentBPM, shakeIntensity, totalBeats);
+                tsLastLog = millis();
             }
             
             if (isCalibrated) M5.Display.println("\n[SYNC API: OK]");
             else M5.Display.println("\n[ATTENTE CALIB.]");
         }
+    }
+
+    // --- APPEL API GET STATUT (Buzzer) ---
+    static unsigned long tsLastStatus = 0;
+    if (isCalibrated && (millis() - tsLastStatus > 2000)) {
+        checkLieStatus();
+        tsLastStatus = millis();
     }
 
     // --- ENVOI API (Toutes les 500ms si calibré) ---
@@ -226,6 +236,34 @@ void sendUnifiedData(float bpm, float shake) {
         Serial.println("[API] Reponse: " + response);
     } else {
         Serial.printf("[API] Erreur d'envoi (HTTP ERROR %d): %s\n", httpResponseCode, http.errorToString(httpResponseCode).c_str());
+    }
+    http.end();
+}
+
+void checkLieStatus() {
+    if (WiFi.status() != WL_CONNECTED) return;
+    
+    HTTPClient http;
+    String url = String(API_URL);
+    url.replace("/measures/", "/devices/status/?mac=" + WiFi.macAddress());
+    
+    http.begin(url);
+    http.addHeader("Authorization", "Token " DEVICE_TOKEN);
+    
+    int httpCode = http.GET();
+    if (httpCode > 0) {
+        String payload = http.getString();
+        StaticJsonDocument<256> doc;
+        deserializeJson(doc, payload);
+        if (doc["is_lie"] == true) {
+            Serial.println("[ALERTE] Mensonge detecte ! (Buzzer Volume MAXIMAL)");
+            // Le petit haut-parleur M5Stick a sa résonance physique absolue autour de 1500Hz.
+            // On l'exploite à fond pour cracher le plus de décibels possibles !
+            for (int i = 0; i < 5; i++) {
+                M5.Speaker.tone(1500, 400); // 1500 Hertz, lourd et extrêmement perçant
+                delay(400); 
+            }
+        }
     }
     http.end();
 }
