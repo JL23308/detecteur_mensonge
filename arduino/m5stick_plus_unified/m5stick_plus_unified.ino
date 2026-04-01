@@ -12,6 +12,7 @@
 // Pin Hardware pour le Grove Ear Clip sur M5StickC Plus 1.1
 // Port Grove : Yellow=G32, White=G33
 const int heartPin = 33; 
+const int buzzerPin = 26; // Buzzer externe sur G26 (HAT port)
 
 // --- VARIABLES RYTHME CARDIAQUE ---
 volatile unsigned long lastBeatTime = 0;
@@ -64,6 +65,7 @@ void setup() {
     // On force l'arrêt de l'I2C sur ce pin et on active la résistance interne
     pinMode(heartPin, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(heartPin), heartBeatISR, FALLING);
+    pinMode(buzzerPin, OUTPUT); // Init Buzzer externe
     // WiFi
     Serial.printf("[WIFI] Connexion a %s...\n", SSID);
     WiFi.begin(SSID, PASSWORD);
@@ -256,12 +258,14 @@ void checkLieStatus() {
         StaticJsonDocument<256> doc;
         deserializeJson(doc, payload);
         if (doc["is_lie"] == true) {
-            Serial.println("[ALERTE] Mensonge detecte ! (Buzzer Volume MAXIMAL)");
-            // Le petit haut-parleur M5Stick a sa résonance physique absolue autour de 1500Hz.
-            // On l'exploite à fond pour cracher le plus de décibels possibles !
+            Serial.println("[ALERTE] Mensonge detecte ! (Buzzer Externe G26)");
+            // On utilise tone() sur le pin 26 pour une puissance maximale.
+            // La fréquence 2500Hz est souvent le point de résonance le plus bruyant.
             for (int i = 0; i < 5; i++) {
-                M5.Speaker.tone(1500, 400); // 1500 Hertz, lourd et extrêmement perçant
-                delay(400); 
+                tone(buzzerPin, 2500); // Oscillation à 2.5kHz
+                delay(300);
+                noTone(buzzerPin);
+                delay(100);
             }
         }
     }
